@@ -1,0 +1,21 @@
+name: Build template
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# No secrets. Analytics IDs belong in Cloudflare Pages env vars.
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test template invariants
+        run: python3 tests/test_template.py -v
+      - name: Build static site
+        run: python3 builder/build_site.py
