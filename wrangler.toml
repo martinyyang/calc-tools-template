@@ -1,0 +1,20 @@
+# Cloudflare Pages project.
+# Dashboard bind (authoritative for Git-connected Pages):
+#   Build command:        python3 builder/build_site.py
+#   Build output directory: dist
+#   Root directory:         /
+#
+# pages_build_output_dir lets `wrangler pages dev` / Pages pick up dist/.
+# Functions live in /functions at the repo root (not inside dist/).
+
+name = "calc-tools-template"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-19"
+
+# Defaults are OFF. Override in the Pages dashboard per environment.
+# Do not put Stripe secrets here.
+[vars]
+ENABLE_STRIPE = "false"
+ENABLE_CHECKOUT_EVENTS = "false"
+ENABLE_AUTH_CREDITS = "false"
+STRIPE_CHECKOUT_MODE = "payment_link"
