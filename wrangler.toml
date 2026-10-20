@@ -12,8 +12,12 @@ pages_build_output_dir = "dist"
 compatibility_date = "2026-10-19"
 
 # Defaults are OFF. Override in the Pages dashboard per environment.
-# Do not put Stripe secrets here.
+# Do not put Stripe or Lemon Squeezy secrets here.
+# PAYMENT_PROVIDER: none | lemonsqueezy | stripe
+# Recommended when enabling payments: lemonsqueezy
 [vars]
+PAYMENT_PROVIDER = "none"
+# Deprecated: ENABLE_STRIPE=true with no PAYMENT_PROVIDER maps to stripe.
 ENABLE_STRIPE = "false"
 ENABLE_CHECKOUT_EVENTS = "false"
 ENABLE_AUTH_CREDITS = "false"
