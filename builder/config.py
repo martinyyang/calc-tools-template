@@ -29,8 +29,9 @@ PLAUSIBLE_DOMAIN = _env("PLAUSIBLE_DOMAIN")
 UMAMI_WEBSITE_ID = _env("UMAMI_WEBSITE_ID")
 UMAMI_SRC = _env("UMAMI_SRC", "https://cloud.umami.is/script.js")
 
-# PAYMENT_PROVIDER: none | lemonsqueezy | stripe. Default none.
-# ENABLE_STRIPE=true with no PAYMENT_PROVIDER still maps to stripe (deprecated).
+# PAYMENT_PROVIDER: none | creem | paddle | stripe. Default none.
+# Legacy (deprecated): lemonsqueezy. ENABLE_STRIPE=true with no
+# PAYMENT_PROVIDER still maps to stripe (deprecated).
 PAYMENT_PROVIDER = resolve_payment_provider()
 PAYMENTS_ENABLED = payments_enabled()
 ENABLE_STRIPE = PAYMENT_PROVIDER == "stripe"

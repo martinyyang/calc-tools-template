@@ -2,10 +2,12 @@
  * Optional Cloudflare Pages Function — one-time checkout skeleton.
  *
  * PAYMENT_PROVIDER=none (default) → 404. No keys required.
- * Recommended provider when enabling: lemonsqueezy
- *   hosted URL     — return LEMONSQUEEZY_CHECKOUT_URL
- *   API checkout   — POST /v1/checkouts with store + variant
+ * Recommended provider when enabling: creem
+ *   hosted URL     — return CREEM_CHECKOUT_URL
+ *   API checkout   — POST /v1/checkouts with CREEM_API_KEY + CREEM_PRODUCT_ID
+ * paddle           — Paddle Billing transaction (one-time PADDLE_PRICE_ID)
  * stripe           — Payment Link or Checkout Session (mode=payment)
+ * lemonsqueezy     — deprecated legacy (hosted URL or API checkout)
  *
  * Deprecated: ENABLE_STRIPE=true with no PAYMENT_PROVIDER maps to stripe.
  * No subscriptions. No spend caps or usage quotas.
