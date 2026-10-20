@@ -12,8 +12,10 @@
   var lineEl = document.getElementById("tool-result-line");
   var checkoutBtn = document.getElementById("checkout-start");
   var cfg = window.SITE_CONFIG || {};
+  var provider = cfg.paymentProvider || (cfg.enableStripe ? "stripe" : "none");
+  var paymentsOn = cfg.paymentsEnabled === true || (provider && provider !== "none");
 
-  if (checkoutBtn && cfg.enableStripe) {
+  if (checkoutBtn && paymentsOn) {
     checkoutBtn.hidden = false;
     checkoutBtn.addEventListener("click", function () {
       if (window.CalcToolsAnalytics) {
@@ -33,7 +35,7 @@
           if (lineEl) lineEl.textContent = (pack.data && pack.data.error) || "Payments are off.";
         })
         .catch(function () {
-          if (lineEl) lineEl.textContent = "Checkout is unavailable (ENABLE_STRIPE is off or Functions are not bound).";
+          if (lineEl) lineEl.textContent = "Checkout is unavailable (PAYMENT_PROVIDER is none or Functions are not bound).";
         });
     });
   }

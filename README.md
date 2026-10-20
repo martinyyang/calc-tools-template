@@ -38,13 +38,13 @@ python3 -m http.server 8787 --directory dist
 
 Preview: `http://127.0.0.1:8787/` — home, `/tool/`, `/about/`, `/privacy/`, `/terms/`.
 
-Optional Functions preview (only needed when testing Stripe):
+Optional Functions preview (only needed when testing checkout):
 
 ```bash
 npx wrangler pages dev dist
 ```
 
-`functions/` at the repo root is optional Pages Functions. With `ENABLE_STRIPE=false` those routes 404 and do not need Stripe keys. Delete `functions/` on a free-only site if you want a pure static project.
+`functions/` at the repo root is optional Pages Functions. With `PAYMENT_PROVIDER=none` those routes 404 and do not need payment keys. Delete `functions/` on a free-only site if you want a pure static project.
 
 ## Analytics
 
@@ -73,35 +73,82 @@ Events:
 
 ## Payments (default OFF)
 
-With `ENABLE_STRIPE=false` the site is pure static and works without Stripe keys.
+`PAYMENT_PROVIDER=none` (default): payments are fully off — checkout/webhook routes 404, the tool button stays hidden, and no provider keys are required. The site is pure static.
 
-### Turn payment ON
+One-time pay-per-use only. This template does not sell subscriptions and does not add usage limits or quotas.
 
-1. Create a Stripe Payment Link **or** a one-time Checkout price (no subscriptions in this template).
-2. In Cloudflare Pages → Settings → Environment variables (Production + Preview as needed):
+When you turn payments **on**, the recommended provider is **Lemon Squeezy**.
+
+| Variable | Values / role | Default |
+| --- | --- | --- |
+| `PAYMENT_PROVIDER` | `none` \| `lemonsqueezy` \| `stripe` | `none` |
+| `ENABLE_STRIPE` | **Deprecated.** `true` with no `PAYMENT_PROVIDER` maps to `stripe` | `false` |
+| `LEMONSQUEEZY_CHECKOUT_URL` | Hosted checkout URL (used as-is when set) | empty |
+| `LEMONSQUEEZY_API_KEY` | API checkout creation (`Bearer`) | empty |
+| `LEMONSQUEEZY_STORE_ID` | Store id for API checkout | empty |
+| `LEMONSQUEEZY_VARIANT_ID` | One-time variant id for API checkout | empty |
+| `LEMONSQUEEZY_WEBHOOK_SECRET` | HMAC-SHA256 key for `X-Signature` | empty |
+| `STRIPE_CHECKOUT_MODE` | `payment_link` \| `checkout_session` | `payment_link` |
+| `STRIPE_PAYMENT_LINK_URL` | Stripe Payment Link URL | empty |
+| `STRIPE_SECRET_KEY` | Checkout Session secret | empty |
+| `STRIPE_WEBHOOK_SECRET` | Stripe-Signature secret | empty |
+| `STRIPE_PRICE_ID` | One-time price id | empty |
+| `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Stripe session return URLs | `/checkout/success/` and `/checkout/cancel/` |
+| `ENABLE_CHECKOUT_EVENTS` | `checkout_start` / `purchase` analytics | `false` |
+| `ENABLE_AUTH_CREDITS` | Auth/credits stubs | `false` |
+
+Do not commit real secrets. Set the same names in Cloudflare Pages → Settings → Environment variables (Production + Preview as needed). `PAYMENT_PROVIDER` must be set for the **build** (button visibility is baked into `window.SITE_CONFIG`) and for Functions (route gate).
+
+### Turn payment ON (Lemon Squeezy — recommended)
+
+1. Create a **one-time** Lemon Squeezy product/variant (not a subscription).
+2. In Pages env vars:
 
    ```
-   ENABLE_STRIPE=true
-   STRIPE_CHECKOUT_MODE=payment_link
-   STRIPE_PAYMENT_LINK_URL=https://buy.stripe.com/...
+   PAYMENT_PROVIDER=lemonsqueezy
+   LEMONSQUEEZY_CHECKOUT_URL=https://your-store.lemonsqueezy.com/checkout/buy/VARIANT_ID
+   LEMONSQUEEZY_WEBHOOK_SECRET=your-signing-secret
    ```
 
-   Or Checkout Session mode:
+   Or API checkout creation (used when `LEMONSQUEEZY_CHECKOUT_URL` is empty):
 
    ```
-   ENABLE_STRIPE=true
-   STRIPE_CHECKOUT_MODE=checkout_session
-   STRIPE_SECRET_KEY=sk_...
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   STRIPE_PRICE_ID=price_...
-   STRIPE_SUCCESS_URL=https://your-domain/checkout/success/
-   STRIPE_CANCEL_URL=https://your-domain/checkout/cancel/
+   PAYMENT_PROVIDER=lemonsqueezy
+   LEMONSQUEEZY_API_KEY=
+   LEMONSQUEEZY_STORE_ID=
+   LEMONSQUEEZY_VARIANT_ID=
+   LEMONSQUEEZY_WEBHOOK_SECRET=
    ```
 
-3. Point the Stripe webhook at `https://your-domain/api/webhook`.
+3. Point the Lemon Squeezy webhook at `https://your-domain/api/webhook` and subscribe to `order_created` (one-time). The Function verifies `X-Signature` as HMAC-SHA256 of the raw body with `LEMONSQUEEZY_WEBHOOK_SECRET`.
 4. Optional: bind a KV namespace named `ORDERS` for idempotent event ids.
-5. Set `ENABLE_CHECKOUT_EVENTS=true` if you want `checkout_start` / `purchase` analytics.
-6. Redeploy. The placeholder tool shows **Start checkout** only when the **build** env also has `ENABLE_STRIPE=true` (it is baked into `window.SITE_CONFIG`).
+5. Leave `ENABLE_CHECKOUT_EVENTS=false` unless you want `checkout_start` / `purchase` analytics.
+6. Redeploy. The placeholder tool shows **Start checkout** only when the **build** env has `PAYMENT_PROVIDER=lemonsqueezy` or `stripe`.
+
+### Stripe (optional alternative)
+
+```
+PAYMENT_PROVIDER=stripe
+STRIPE_CHECKOUT_MODE=payment_link
+STRIPE_PAYMENT_LINK_URL=https://buy.stripe.com/...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Or Checkout Session mode (`mode=payment` only):
+
+```
+PAYMENT_PROVIDER=stripe
+STRIPE_CHECKOUT_MODE=checkout_session
+STRIPE_SECRET_KEY=sk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID=price_...
+STRIPE_SUCCESS_URL=https://your-domain/checkout/success/
+STRIPE_CANCEL_URL=https://your-domain/checkout/cancel/
+```
+
+Point the Stripe webhook at `https://your-domain/api/webhook`.
+
+**Deprecated:** `ENABLE_STRIPE=true` with no `PAYMENT_PROVIDER` still enables Stripe. Prefer `PAYMENT_PROVIDER=stripe` on new sites.
 
 Do not invent spend caps or auto-fail limits.
 

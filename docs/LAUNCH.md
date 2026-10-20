@@ -7,7 +7,7 @@ The sheet is the source of truth. This file is a repo checklist, not a substitut
 
 **Domain buying and payment are not documented here.** Martin buys the domain on his own machine. The ops bot takes over only after the domain is already in Cloudflare, then binds Pages.
 
-Do not put secrets, Stripe keys, or personal inboxes in git, chat, or sheet cells.
+Do not put secrets, Lemon Squeezy / Stripe keys, or personal inboxes in git, chat, or sheet cells.
 
 ## Stage 0 — Intake (sheet row first)
 
@@ -67,7 +67,7 @@ Do not put secrets, Stripe keys, or personal inboxes in git, chat, or sheet cell
 ## Later (not this template)
 
 - AdSense: only after the site has a real tool and traffic. Current farm sites are 暂缓. Never bind Fetch China.
-- Stripe / auth-credits: stay OFF until a paid tool ships. See README.
+- Payments stay OFF (`PAYMENT_PROVIDER=none`) until a paid tool ships. Recommended provider when enabling: Lemon Squeezy (one-time only). `ENABLE_STRIPE` is deprecated; `ENABLE_STRIPE=true` with no `PAYMENT_PROVIDER` still maps to Stripe. Auth-credits stay OFF (`ENABLE_AUTH_CREDITS=false`). See README.
 
 ## Recurring (after launch)
 

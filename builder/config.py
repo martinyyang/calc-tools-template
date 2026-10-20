@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from urllib.parse import urlparse
 
+from payments import payments_enabled, resolve_payment_provider
+
 
 def _env(name: str, default: str = "") -> str:
     return (os.environ.get(name) or default).strip()
@@ -27,7 +29,11 @@ PLAUSIBLE_DOMAIN = _env("PLAUSIBLE_DOMAIN")
 UMAMI_WEBSITE_ID = _env("UMAMI_WEBSITE_ID")
 UMAMI_SRC = _env("UMAMI_SRC", "https://cloud.umami.is/script.js")
 
-ENABLE_STRIPE = _truthy("ENABLE_STRIPE", "false")
+# PAYMENT_PROVIDER: none | lemonsqueezy | stripe. Default none.
+# ENABLE_STRIPE=true with no PAYMENT_PROVIDER still maps to stripe (deprecated).
+PAYMENT_PROVIDER = resolve_payment_provider()
+PAYMENTS_ENABLED = payments_enabled()
+ENABLE_STRIPE = PAYMENT_PROVIDER == "stripe"
 ENABLE_CHECKOUT_EVENTS = _truthy("ENABLE_CHECKOUT_EVENTS", "false")
 ENABLE_AUTH_CREDITS = _truthy("ENABLE_AUTH_CREDITS", "false")
 STRIPE_CHECKOUT_MODE = _env("STRIPE_CHECKOUT_MODE", "payment_link")
