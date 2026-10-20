@@ -275,7 +275,7 @@ def page_tool() -> str:
   <p class="calc-line" id="tool-result-line">Submit to see a sample result.</p>
   <button class="btn" type="button" id="checkout-start" hidden>Start checkout (off by default)</button>
 </form>
-<p class="note">Payments stay off until <code>PAYMENT_PROVIDER</code> is <code>lemonsqueezy</code> or <code>stripe</code> and Pages Functions are configured. Auth/credits remain stubs.</p>
+<p class="note">Payments stay off until <code>PAYMENT_PROVIDER</code> is <code>creem</code>, <code>paddle</code>, or <code>stripe</code> and Pages Functions are configured. Auth/credits remain stubs.</p>
 """,
     )
 
@@ -292,7 +292,7 @@ def page_about() -> str:
 <p>Clone the repo, change <code>builder/config.py</code> (or env vars), replace the tool page and <code>static/js/tool.js</code>, and bind the new domain on Cloudflare Pages after the domain is already in Cloudflare.</p>
 <h2>What we do not ship by default</h2>
 <ul>
-  <li>Payments are off (<code>PAYMENT_PROVIDER=none</code>). Lemon Squeezy is the recommended one-time provider; Stripe is still available. The checkout and webhook files are skeletons only.</li>
+  <li>Payments are off (<code>PAYMENT_PROVIDER=none</code>). Creem is the recommended one-time provider; Paddle is the alternative; Stripe only if there is an overseas company. The checkout and webhook files are skeletons only.</li>
   <li>Accounts and credits are interface stubs: enable when the next paid tool ships.</li>
   <li>Analytics scripts load only when site-specific IDs are set.</li>
 </ul>
@@ -315,7 +315,7 @@ def page_privacy() -> str:
 <h2>2. Analytics (only if configured)</h2>
 <p>If this site has Google Analytics 4 and Microsoft Clarity IDs, those scripts load so we can see aggregate usage. If the IDs are unset, the scripts are not injected. An optional Plausible <em>or</em> Umami tag may be added the same way. We do not reuse analytics IDs across tool sites.</p>
 <h2>3. Payments</h2>
-<p>Payments are off by default. If a later paid tool turns them on (Lemon Squeezy or Stripe), the provider processes the payment on their hosted pages. We do not store card numbers.</p>
+<p>Payments are off by default. If a later paid tool turns them on (Creem, Paddle, or Stripe), the provider processes the payment on their hosted pages. We do not store card numbers.</p>
 <h2>4. Accounts and credits</h2>
 <p>This shell has no login. Auth and credits stay disabled until a paid tool ships.</p>
 <h2>5. Contact</h2>
@@ -340,7 +340,7 @@ def page_terms() -> str:
 <h2>3. Limitation of liability</h2>
 <p>The site is provided “as is”, without warranty. Maintainers are not liable for damages arising from use of the calculators.</p>
 <h2>4. Payments</h2>
-<p>Paid checkout is off unless a later tool sets <code>PAYMENT_PROVIDER</code> to <code>lemonsqueezy</code> or <code>stripe</code>. No subscriptions are sold by this template.</p>
+<p>Paid checkout is off unless a later tool sets <code>PAYMENT_PROVIDER</code> to <code>creem</code>, <code>paddle</code>, or <code>stripe</code>. No subscriptions are sold by this template.</p>
 <h2>5. Contact</h2>
 <p><a href="mailto:{esc(SITE_CONTACT_EMAIL)}">{esc(SITE_CONTACT_EMAIL)}</a></p>
 """,
@@ -377,7 +377,7 @@ if (window.CalcToolsAnalytics) {
 }
 </script>""",
         body="""
-<p>This page is the checkout success URL. Payments are off until <code>PAYMENT_PROVIDER</code> is <code>lemonsqueezy</code> or <code>stripe</code>.</p>
+<p>This page is the checkout success URL. Payments are off until <code>PAYMENT_PROVIDER</code> is set to a provider other than <code>none</code>.</p>
 <p><a href="/tool/">Return to the tool</a></p>
 """,
     )

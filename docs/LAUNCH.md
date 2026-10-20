@@ -7,7 +7,7 @@ The sheet is the source of truth. This file is a repo checklist, not a substitut
 
 **Domain buying and payment are not documented here.** Martin buys the domain on his own machine. The ops bot takes over only after the domain is already in Cloudflare, then binds Pages.
 
-Do not put secrets, Lemon Squeezy / Stripe keys, or personal inboxes in git, chat, or sheet cells.
+Do not put secrets, Creem / Paddle / Stripe / Lemon Squeezy keys, or personal inboxes in git, chat, or sheet cells.
 
 ## Stage 0 — Intake (sheet row first)
 
@@ -67,7 +67,7 @@ Do not put secrets, Lemon Squeezy / Stripe keys, or personal inboxes in git, cha
 ## Later (not this template)
 
 - AdSense: only after the site has a real tool and traffic. Current farm sites are 暂缓. Never bind Fetch China.
-- Payments stay OFF (`PAYMENT_PROVIDER=none`) until a paid tool ships. Recommended provider when enabling: Lemon Squeezy (one-time only). `ENABLE_STRIPE` is deprecated; `ENABLE_STRIPE=true` with no `PAYMENT_PROVIDER` still maps to Stripe. Auth-credits stay OFF (`ENABLE_AUTH_CREDITS=false`). See README.
+- Payments stay OFF (`PAYMENT_PROVIDER=none`) until a paid tool ships. Recommended provider when enabling: **Creem** (one-time only; suits mainland-China individuals, payout to Alipay). Alternative: **Paddle** (payout via Payoneer). **Stripe** only when there is an overseas company. `lemonsqueezy` is a deprecated legacy value that still works. `ENABLE_STRIPE` is deprecated; `ENABLE_STRIPE=true` with no `PAYMENT_PROVIDER` still maps to Stripe. Auth-credits stay OFF (`ENABLE_AUTH_CREDITS=false`). See README.
 
 ## Recurring (after launch)
 

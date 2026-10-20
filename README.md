@@ -77,55 +77,81 @@ Events:
 
 One-time pay-per-use only. This template does not sell subscriptions and does not add usage limits or quotas.
 
-When you turn payments **on**, the recommended provider is **Lemon Squeezy**.
+When you turn payments **on**, the recommended provider is **Creem** (suits mainland-China individuals; payout to Alipay). **Paddle** is the alternative (payout via Payoneer). Use **Stripe** only when there is an overseas company.
 
 | Variable | Values / role | Default |
 | --- | --- | --- |
-| `PAYMENT_PROVIDER` | `none` \| `lemonsqueezy` \| `stripe` | `none` |
+| `PAYMENT_PROVIDER` | `none` \| `creem` \| `paddle` \| `stripe` | `none` |
+| `PAYMENT_PROVIDER=lemonsqueezy` | **Deprecated** legacy value; still works | — |
 | `ENABLE_STRIPE` | **Deprecated.** `true` with no `PAYMENT_PROVIDER` maps to `stripe` | `false` |
-| `LEMONSQUEEZY_CHECKOUT_URL` | Hosted checkout URL (used as-is when set) | empty |
-| `LEMONSQUEEZY_API_KEY` | API checkout creation (`Bearer`) | empty |
-| `LEMONSQUEEZY_STORE_ID` | Store id for API checkout | empty |
-| `LEMONSQUEEZY_VARIANT_ID` | One-time variant id for API checkout | empty |
-| `LEMONSQUEEZY_WEBHOOK_SECRET` | HMAC-SHA256 key for `X-Signature` | empty |
+| `CREEM_CHECKOUT_URL` | Hosted checkout URL (used as-is when set) | empty |
+| `CREEM_API_KEY` | API checkout creation (`x-api-key`) | empty |
+| `CREEM_PRODUCT_ID` | One-time product id for API checkout | empty |
+| `CREEM_WEBHOOK_SECRET` | HMAC-SHA256 key for `creem-signature` | empty |
+| `PADDLE_ENV` | `sandbox` \| `production` | `sandbox` |
+| `PADDLE_CLIENT_TOKEN` | Paddle.js client token (public) | empty |
+| `PADDLE_PRICE_ID` | One-time price id | empty |
+| `PADDLE_API_KEY` | Server API key for transaction create | empty |
+| `PADDLE_WEBHOOK_SECRET` | HMAC-SHA256 key for `Paddle-Signature` (`ts;h1`) | empty |
 | `STRIPE_CHECKOUT_MODE` | `payment_link` \| `checkout_session` | `payment_link` |
 | `STRIPE_PAYMENT_LINK_URL` | Stripe Payment Link URL | empty |
 | `STRIPE_SECRET_KEY` | Checkout Session secret | empty |
 | `STRIPE_WEBHOOK_SECRET` | Stripe-Signature secret | empty |
 | `STRIPE_PRICE_ID` | One-time price id | empty |
 | `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Stripe session return URLs | `/checkout/success/` and `/checkout/cancel/` |
+| `LEMONSQUEEZY_CHECKOUT_URL` | **Deprecated.** Hosted checkout URL | empty |
+| `LEMONSQUEEZY_API_KEY` | **Deprecated.** API checkout (`Bearer`) | empty |
+| `LEMONSQUEEZY_STORE_ID` | **Deprecated.** Store id | empty |
+| `LEMONSQUEEZY_VARIANT_ID` | **Deprecated.** One-time variant id | empty |
+| `LEMONSQUEEZY_WEBHOOK_SECRET` | **Deprecated.** HMAC-SHA256 key for `X-Signature` | empty |
 | `ENABLE_CHECKOUT_EVENTS` | `checkout_start` / `purchase` analytics | `false` |
 | `ENABLE_AUTH_CREDITS` | Auth/credits stubs | `false` |
 
 Do not commit real secrets. Set the same names in Cloudflare Pages → Settings → Environment variables (Production + Preview as needed). `PAYMENT_PROVIDER` must be set for the **build** (button visibility is baked into `window.SITE_CONFIG`) and for Functions (route gate).
 
-### Turn payment ON (Lemon Squeezy — recommended)
+### Turn payment ON (Creem — recommended)
 
-1. Create a **one-time** Lemon Squeezy product/variant (not a subscription).
+Suits mainland-China individuals; payout to Alipay. One-time products only.
+
+1. Create a **one-time** Creem product (not a subscription).
 2. In Pages env vars:
 
    ```
-   PAYMENT_PROVIDER=lemonsqueezy
-   LEMONSQUEEZY_CHECKOUT_URL=https://your-store.lemonsqueezy.com/checkout/buy/VARIANT_ID
-   LEMONSQUEEZY_WEBHOOK_SECRET=your-signing-secret
+   PAYMENT_PROVIDER=creem
+   CREEM_CHECKOUT_URL=https://www.creem.io/payment/...
+   CREEM_WEBHOOK_SECRET=
    ```
 
-   Or API checkout creation (used when `LEMONSQUEEZY_CHECKOUT_URL` is empty):
+   Or API checkout creation (used when `CREEM_CHECKOUT_URL` is empty):
 
    ```
-   PAYMENT_PROVIDER=lemonsqueezy
-   LEMONSQUEEZY_API_KEY=
-   LEMONSQUEEZY_STORE_ID=
-   LEMONSQUEEZY_VARIANT_ID=
-   LEMONSQUEEZY_WEBHOOK_SECRET=
+   PAYMENT_PROVIDER=creem
+   CREEM_API_KEY=
+   CREEM_PRODUCT_ID=
+   CREEM_WEBHOOK_SECRET=
    ```
 
-3. Point the Lemon Squeezy webhook at `https://your-domain/api/webhook` and subscribe to `order_created` (one-time). The Function verifies `X-Signature` as HMAC-SHA256 of the raw body with `LEMONSQUEEZY_WEBHOOK_SECRET`.
+3. Point the Creem webhook at `https://your-domain/api/webhook` and subscribe to `checkout.completed` (one-time). The Function verifies the `creem-signature` header as HMAC-SHA256 of the raw body with `CREEM_WEBHOOK_SECRET` ([Creem webhook docs](https://docs.creem.io/code/webhooks)).
 4. Optional: bind a KV namespace named `ORDERS` for idempotent event ids.
 5. Leave `ENABLE_CHECKOUT_EVENTS=false` unless you want `checkout_start` / `purchase` analytics.
-6. Redeploy. The placeholder tool shows **Start checkout** only when the **build** env has `PAYMENT_PROVIDER=lemonsqueezy` or `stripe`.
+6. Redeploy. The placeholder tool shows **Start checkout** only when the **build** env has `PAYMENT_PROVIDER` set to a provider other than `none`.
 
-### Stripe (optional alternative)
+### Paddle (alternative)
+
+Payout via Payoneer. Create a **one-time** Paddle Billing price (not a subscription).
+
+```
+PAYMENT_PROVIDER=paddle
+PADDLE_ENV=sandbox
+PADDLE_CLIENT_TOKEN=
+PADDLE_PRICE_ID=pri_...
+PADDLE_API_KEY=
+PADDLE_WEBHOOK_SECRET=
+```
+
+The Function creates a Paddle Billing transaction (`POST /transactions`, `quantity: 1`) against `sandbox-api.paddle.com` or `api.paddle.com` and returns `checkout.url`. Point the Paddle notification destination at `https://your-domain/api/webhook`. The Function verifies `Paddle-Signature` (`ts=...;h1=...`) as HMAC-SHA256 of `` `${ts}:${rawBody}` `` with `PADDLE_WEBHOOK_SECRET` ([Paddle signature docs](https://developer.paddle.com/webhooks/signature-verification)).
+
+### Stripe (overseas company only)
 
 ```
 PAYMENT_PROVIDER=stripe
@@ -149,6 +175,10 @@ STRIPE_CANCEL_URL=https://your-domain/checkout/cancel/
 Point the Stripe webhook at `https://your-domain/api/webhook`.
 
 **Deprecated:** `ENABLE_STRIPE=true` with no `PAYMENT_PROVIDER` still enables Stripe. Prefer `PAYMENT_PROVIDER=stripe` on new sites.
+
+### Lemon Squeezy (deprecated legacy)
+
+`PAYMENT_PROVIDER=lemonsqueezy` still works (hosted `LEMONSQUEEZY_CHECKOUT_URL` or API checkout with store + variant; `X-Signature` HMAC-SHA256). Prefer Creem or Paddle on new sites.
 
 Do not invent spend caps or auto-fail limits.
 

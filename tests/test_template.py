@@ -199,8 +199,12 @@ class TemplateTests(unittest.TestCase):
         self.assertIn("dist", readme)
         self.assertIn("Turn payment ON", readme)
         self.assertIn("PAYMENT_PROVIDER", readme)
+        self.assertIn("creem", readme)
+        self.assertIn("paddle", readme)
         self.assertIn("lemonsqueezy", readme)
         self.assertIn("Deprecated", readme)
+        self.assertIn("mainland-China", readme)
+        self.assertIn("Payoneer", readme)
         self.assertIn("Martin buys the domain on his own machine", readme)
         self.assertNotIn("buy a domain", readme.lower().replace("buys the domain on his own machine", ""))
 
@@ -211,14 +215,20 @@ class TemplateTests(unittest.TestCase):
         self.assertIn("PAYMENT_PROVIDER", checkout)
         self.assertIn("paymentsDisabledResponse", checkout)
         self.assertIn("payments_disabled", shared)
+        self.assertIn("creem-signature", webhook)
+        self.assertIn("CREEM_WEBHOOK_SECRET", webhook)
+        self.assertIn("Paddle-Signature", webhook)
+        self.assertIn("PADDLE_WEBHOOK_SECRET", webhook)
         self.assertIn("X-Signature", webhook)
-        self.assertIn("LEMONSQUEEZY_WEBHOOK_SECRET", webhook)
+        self.assertIn("LEMONSQUEEZY_WEBHOOK_SECRET", shared)
         self.assertIn("stripe-signature", shared)
         self.assertIn("alreadySeen", shared)
         self.assertIn('mode: "payment"', shared)
         self.assertNotIn('mode: "subscription"', shared)
         self.assertIn("HMAC", shared)
         self.assertIn("SHA-256", shared)
+        self.assertIn("creemSignatureOk", shared)
+        self.assertIn("paddleSignatureOk", shared)
 
     def test_auth_stub_comment(self) -> None:
         stub = (ROOT / "static" / "js" / "auth-credits.js").read_text(encoding="utf-8")
@@ -230,6 +240,15 @@ class TemplateTests(unittest.TestCase):
         self.assertIn("ENABLE_STRIPE=false", example)
         self.assertIn("ENABLE_CHECKOUT_EVENTS=false", example)
         self.assertIn("ENABLE_AUTH_CREDITS=false", example)
+        self.assertIn("CREEM_CHECKOUT_URL=", example)
+        self.assertIn("CREEM_API_KEY=", example)
+        self.assertIn("CREEM_PRODUCT_ID=", example)
+        self.assertIn("CREEM_WEBHOOK_SECRET=", example)
+        self.assertIn("PADDLE_ENV=sandbox", example)
+        self.assertIn("PADDLE_CLIENT_TOKEN=", example)
+        self.assertIn("PADDLE_PRICE_ID=", example)
+        self.assertIn("PADDLE_API_KEY=", example)
+        self.assertIn("PADDLE_WEBHOOK_SECRET=", example)
         self.assertIn("LEMONSQUEEZY_API_KEY=", example)
         self.assertIn("LEMONSQUEEZY_STORE_ID=", example)
         self.assertIn("LEMONSQUEEZY_VARIANT_ID=", example)
@@ -244,23 +263,29 @@ class TemplateTests(unittest.TestCase):
         cases = (
             ({}, "none"),
             ({"PAYMENT_PROVIDER": "none"}, "none"),
-            ({"PAYMENT_PROVIDER": "lemonsqueezy"}, "lemonsqueezy"),
+            ({"PAYMENT_PROVIDER": "creem"}, "creem"),
+            ({"PAYMENT_PROVIDER": "paddle"}, "paddle"),
             ({"PAYMENT_PROVIDER": "stripe"}, "stripe"),
+            ({"PAYMENT_PROVIDER": "lemonsqueezy"}, "lemonsqueezy"),
+            ({"PAYMENT_PROVIDER": "Creem"}, "creem"),
             ({"PAYMENT_PROVIDER": "LemonSqueezy"}, "lemonsqueezy"),
             ({"PAYMENT_PROVIDER": "paypal"}, "none"),
             ({"ENABLE_STRIPE": "true"}, "stripe"),
             ({"ENABLE_STRIPE": "true", "PAYMENT_PROVIDER": ""}, "stripe"),
             ({"ENABLE_STRIPE": "true", "PAYMENT_PROVIDER": "none"}, "none"),
+            ({"ENABLE_STRIPE": "true", "PAYMENT_PROVIDER": "creem"}, "creem"),
             ({"ENABLE_STRIPE": "true", "PAYMENT_PROVIDER": "lemonsqueezy"}, "lemonsqueezy"),
             ({"ENABLE_STRIPE": "false"}, "none"),
         )
         for env, expected in cases:
             self.assertEqual(resolve_payment_provider(env), expected, env)
 
-    def test_build_payment_provider_none_stripe_lemonsqueezy(self) -> None:
+    def test_build_payment_provider_matrix(self) -> None:
         matrix = (
             ({}, "none", False, False),
             ({"PAYMENT_PROVIDER": "none"}, "none", False, False),
+            ({"PAYMENT_PROVIDER": "creem"}, "creem", True, False),
+            ({"PAYMENT_PROVIDER": "paddle"}, "paddle", True, False),
             ({"PAYMENT_PROVIDER": "lemonsqueezy"}, "lemonsqueezy", True, False),
             ({"PAYMENT_PROVIDER": "stripe"}, "stripe", True, True),
             ({"ENABLE_STRIPE": "true"}, "stripe", True, True),
@@ -297,8 +322,10 @@ class TemplateTests(unittest.TestCase):
     def test_launch_docs_mention_payment_switch(self) -> None:
         launch = (ROOT / "docs" / "LAUNCH.md").read_text(encoding="utf-8")
         self.assertIn("PAYMENT_PROVIDER=none", launch)
-        self.assertIn("Lemon Squeezy", launch)
+        self.assertIn("Creem", launch)
+        self.assertIn("Paddle", launch)
         self.assertIn("ENABLE_STRIPE", launch)
+        self.assertIn("lemonsqueezy", launch.lower())
 
 
 if __name__ == "__main__":

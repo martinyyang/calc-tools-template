@@ -5,9 +5,13 @@
  * are idempotent. Bind a KV namespace named ORDERS when you turn
  * payments on. One-time orders only. No subscriptions. No usage quotas.
  *
- * Lemon Squeezy: X-Signature = HMAC-SHA256 hex of the raw body
- *                with LEMONSQUEEZY_WEBHOOK_SECRET.
+ * Creem:         creem-signature = HMAC-SHA256 hex of the raw body
+ *                with CREEM_WEBHOOK_SECRET.
+ * Paddle:        Paddle-Signature `ts=...;h1=...` HMAC-SHA256 of
+ *                `${ts}:${rawBody}` with PADDLE_WEBHOOK_SECRET.
  * Stripe:        Stripe-Signature (t=,v1=) with STRIPE_WEBHOOK_SECRET.
+ * Lemon Squeezy: deprecated. X-Signature HMAC-SHA256 hex of the raw body
+ *                with LEMONSQUEEZY_WEBHOOK_SECRET.
  *
  * PAYMENT_PROVIDER=none (default) → 404. Static site does not need this file.
  * Deprecated: ENABLE_STRIPE=true with no PAYMENT_PROVIDER maps to stripe.

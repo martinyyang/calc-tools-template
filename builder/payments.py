@@ -1,8 +1,9 @@
 """Resolve PAYMENT_PROVIDER with deprecated ENABLE_STRIPE fallback.
 
-Values: none | lemonsqueezy | stripe
-Default none — payments fully off (no checkout routes, no keys).
-When enabling payments, the recommended provider is lemonsqueezy (one-time only).
+Values: none | creem | paddle | stripe
+Legacy (deprecated): lemonsqueezy
+Default none — payments fully off (routes 404, button hidden, no keys).
+When enabling payments, the recommended provider is creem (one-time only).
 """
 
 from __future__ import annotations
@@ -10,8 +11,8 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
-PROVIDERS = ("none", "stripe", "lemonsqueezy")
-RECOMMENDED_PROVIDER = "lemonsqueezy"
+PROVIDERS = ("none", "creem", "paddle", "stripe", "lemonsqueezy")
+RECOMMENDED_PROVIDER = "creem"
 
 
 def _truthy(value: object) -> bool:
@@ -19,10 +20,11 @@ def _truthy(value: object) -> bool:
 
 
 def resolve_payment_provider(env: Mapping[str, str] | None = None) -> str:
-    """Return none | stripe | lemonsqueezy.
+    """Return none | creem | paddle | stripe | lemonsqueezy.
 
     If PAYMENT_PROVIDER is unset or empty, ENABLE_STRIPE=true maps to stripe
     (deprecated compatibility). Unknown PAYMENT_PROVIDER values fall back to none.
+    ``lemonsqueezy`` remains a working legacy value.
     """
     src = env if env is not None else os.environ
     raw = str(src.get("PAYMENT_PROVIDER") or "").strip().lower()

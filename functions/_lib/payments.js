@@ -1,15 +1,18 @@
 /**
  * Shared payment helpers for optional Pages Functions.
  *
- * PAYMENT_PROVIDER: none | lemonsqueezy | stripe
+ * PAYMENT_PROVIDER: none | creem | paddle | stripe
+ * Legacy (deprecated): lemonsqueezy
  * Default none — checkout/webhook 404, no keys required.
- * Recommended when enabling: lemonsqueezy (hosted URL or API checkout).
+ * Recommended when enabling: creem (hosted URL or API checkout).
+ * Alternative: paddle (Paddle Billing, one-time price).
+ * stripe: only when there is an overseas company.
  * One-time payment only. No subscriptions. No usage quotas.
  *
  * Deprecated: ENABLE_STRIPE=true with no PAYMENT_PROVIDER maps to stripe.
  */
 
-const PROVIDERS = new Set(["none", "stripe", "lemonsqueezy"]);
+const PROVIDERS = new Set(["none", "creem", "paddle", "stripe", "lemonsqueezy"]);
 
 function truthy(value) {
   return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
@@ -67,7 +70,36 @@ export async function hmacSha256Hex(secret, payload) {
   return hex(signed);
 }
 
-/** Lemon Squeezy: X-Signature is HMAC-SHA256 hex of the raw body. */
+/** Creem: creem-signature is HMAC-SHA256 hex of the raw body. */
+export async function creemSignatureOk(payload, header, secret) {
+  if (!header || !secret) return false;
+  const expected = await hmacSha256Hex(secret, payload);
+  const supplied = String(header).trim().toLowerCase();
+  return timingSafeEqual(expected, supplied);
+}
+
+/**
+ * Paddle Billing: Paddle-Signature is `ts=<unix>;h1=<hex>` (more h1 values
+ * may appear during secret rotation). Signed payload is `${ts}:${rawBody}`.
+ */
+export async function paddleSignatureOk(payload, header, secret) {
+  if (!header || !secret) return false;
+  let timestamp = "";
+  const signatures = [];
+  for (const piece of String(header).split(";")) {
+    const idx = piece.indexOf("=");
+    if (idx === -1) continue;
+    const key = piece.slice(0, idx).trim();
+    const value = piece.slice(idx + 1).trim();
+    if (key === "ts") timestamp = value;
+    if (key === "h1" && value) signatures.push(value.toLowerCase());
+  }
+  if (!timestamp || signatures.length === 0) return false;
+  const digest = await hmacSha256Hex(secret, `${timestamp}:${payload}`);
+  return signatures.some((sig) => timingSafeEqual(digest, sig));
+}
+
+/** Lemon Squeezy (deprecated): X-Signature is HMAC-SHA256 hex of the raw body. */
 export async function lemonSqueezySignatureOk(payload, header, secret) {
   if (!header || !secret) return false;
   const expected = await hmacSha256Hex(secret, payload);
@@ -98,6 +130,75 @@ async function alreadySeen(env, key) {
 async function kvPut(env, key, value) {
   if (!env.ORDERS) return;
   await env.ORDERS.put(key, value);
+}
+
+async function creemCheckout({ request, env, fetchImpl }) {
+  const hosted = env.CREEM_CHECKOUT_URL;
+  if (hosted) {
+    return json(200, { url: hosted });
+  }
+
+  const apiKey = env.CREEM_API_KEY;
+  const productId = env.CREEM_PRODUCT_ID;
+  if (!apiKey || !productId) {
+    return json(500, { error: "missing_creem_checkout_config" });
+  }
+
+  const origin = new URL(request.url).origin;
+  const success = env.CREEM_SUCCESS_URL || `${origin}/checkout/success/`;
+  const res = await fetchImpl("https://api.creem.io/v1/checkouts", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      product_id: productId,
+      success_url: success,
+    }),
+  });
+  const data = await res.json();
+  const url = data && data.checkout_url;
+  if (!res.ok || !url) {
+    return json(502, { error: "creem_checkout_failed" });
+  }
+  return json(200, { url, id: data.id || null });
+}
+
+function paddleApiBase(env) {
+  const mode = String(env.PADDLE_ENV || "sandbox").trim().toLowerCase();
+  return mode === "production" ? "https://api.paddle.com" : "https://sandbox-api.paddle.com";
+}
+
+async function paddleCheckout({ request: _request, env, fetchImpl }) {
+  const apiKey = env.PADDLE_API_KEY;
+  const priceId = env.PADDLE_PRICE_ID;
+  const paddleEnv = String(env.PADDLE_ENV || "sandbox").trim().toLowerCase();
+  if (paddleEnv && paddleEnv !== "sandbox" && paddleEnv !== "production") {
+    return json(500, { error: "invalid_paddle_env" });
+  }
+  if (!apiKey || !priceId) {
+    return json(500, { error: "missing_paddle_checkout_config" });
+  }
+
+  const res = await fetchImpl(`${paddleApiBase(env)}/transactions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "Paddle-Version": "1",
+    },
+    body: JSON.stringify({
+      items: [{ price_id: priceId, quantity: 1 }],
+    }),
+  });
+  const data = await res.json();
+  const txn = data && data.data ? data.data : {};
+  const url = txn.checkout && txn.checkout.url;
+  if (!res.ok || !url) {
+    return json(502, { error: "paddle_checkout_failed" });
+  }
+  return json(200, { url, id: txn.id || null });
 }
 
 async function lemonCheckout({ request, env, fetchImpl }) {
@@ -199,6 +300,12 @@ export async function handleCheckout({ request, env, fetchImpl }) {
     return paymentsDisabledResponse();
   }
   const doFetch = fetchImpl || globalThis.fetch;
+  if (provider === "creem") {
+    return creemCheckout({ request, env, fetchImpl: doFetch });
+  }
+  if (provider === "paddle") {
+    return paddleCheckout({ request, env, fetchImpl: doFetch });
+  }
   if (provider === "lemonsqueezy") {
     return lemonCheckout({ request, env, fetchImpl: doFetch });
   }
@@ -206,6 +313,94 @@ export async function handleCheckout({ request, env, fetchImpl }) {
     return stripeCheckout({ request, env, fetchImpl: doFetch });
   }
   return paymentsDisabledResponse();
+}
+
+async function creemWebhook({ request, env, payload }) {
+  const ok = await creemSignatureOk(
+    payload,
+    request.headers.get("creem-signature"),
+    env.CREEM_WEBHOOK_SECRET,
+  );
+  if (!ok) {
+    return json(400, { error: "invalid_signature" });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(payload);
+  } catch {
+    return json(400, { error: "invalid_json" });
+  }
+
+  const eventType = event.eventType || event.event_type || "";
+  const object = event.object || {};
+  const eventKey = `creem:event:${event.id || object.id || eventType}`;
+
+  if (await alreadySeen(env, eventKey)) {
+    return json(200, { received: true, duplicate: true });
+  }
+
+  if (eventType === "checkout.completed") {
+    await kvPut(
+      env,
+      eventKey,
+      JSON.stringify({
+        id: event.id || object.id || null,
+        type: eventType,
+        orderId: object.order || object.order_id || null,
+      }),
+    );
+  } else if (env.ORDERS && (event.id || object.id || eventType)) {
+    await kvPut(env, eventKey, JSON.stringify({ id: event.id || null, type: eventType, ignored: true }));
+  }
+
+  return json(200, { received: true });
+}
+
+async function paddleWebhook({ request, env, payload }) {
+  const ok = await paddleSignatureOk(
+    payload,
+    request.headers.get("paddle-signature"),
+    env.PADDLE_WEBHOOK_SECRET,
+  );
+  if (!ok) {
+    return json(400, { error: "invalid_signature" });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(payload);
+  } catch {
+    return json(400, { error: "invalid_json" });
+  }
+
+  const eventId = event.event_id || "";
+  const eventType = event.event_type || "";
+  const eventKey = `paddle:event:${eventId || eventType}`;
+
+  if (await alreadySeen(env, eventKey)) {
+    return json(200, { received: true, duplicate: true });
+  }
+
+  if (eventType === "transaction.completed" || eventType === "transaction.paid") {
+    const object = event.data || {};
+    const totals = (object.details && object.details.totals) || {};
+    await kvPut(
+      env,
+      eventKey,
+      JSON.stringify({
+        id: eventId || object.id || null,
+        type: eventType,
+        transactionId: object.id || null,
+        total: totals.total || null,
+        currency: totals.currency_code || object.currency_code || null,
+      }),
+    );
+  } else if (env.ORDERS && (eventId || eventType)) {
+    await kvPut(env, eventKey, JSON.stringify({ id: eventId || null, type: eventType, ignored: true }));
+  }
+
+  return json(200, { received: true });
 }
 
 async function lemonWebhook({ request, env, payload }) {
@@ -247,7 +442,6 @@ async function lemonWebhook({ request, env, payload }) {
       }),
     );
   } else if (env.ORDERS && (object.id || eventName)) {
-    // Ignore other event types (no subscription handlers in this skeleton).
     await kvPut(env, eventKey, JSON.stringify({ id: object.id || null, type: eventName, ignored: true }));
   }
 
@@ -306,6 +500,12 @@ export async function handleWebhook({ request, env }) {
     return json(404, { error: "payments_disabled" });
   }
   const payload = await request.text();
+  if (provider === "creem") {
+    return creemWebhook({ request, env, payload });
+  }
+  if (provider === "paddle") {
+    return paddleWebhook({ request, env, payload });
+  }
   if (provider === "lemonsqueezy") {
     return lemonWebhook({ request, env, payload });
   }
